@@ -1,0 +1,56 @@
+alias: Night Temperature Control Bedroom
+description: Controls bedroom and living room temperatures on a daily schedule
+triggers:
+  - platform: time_pattern
+    minutes: /5
+conditions:
+  - condition: time
+    after: "20:00:00"
+    before: "06:00:00"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {% set temp = states('sensor.bedroom_temperature_sensor') | float %} 
+              {{ temp < heat_threshold | float }}
+        sequence:
+          - service: climate.set_hvac_mode
+            data:
+              entity_id: climate.living_room_thermostat
+              hvac_mode: heat
+          - service: climate.set_temperature
+            data:
+              entity_id: climate.living_room_thermostat
+              temperature: "{{ heat_setpoint }}"
+      - conditions:
+          - condition: template
+            value_template: >
+              {% set temp = states('sensor.bedroom_temperature_sensor') | float %} 
+              {{ temp > cool_threshold | float }}
+        sequence:
+          - service: climate.set_hvac_mode
+            data:
+              entity_id: climate.living_room_thermostat
+              hvac_mode: cool
+          - service: climate.set_temperature
+            data:
+              entity_id: climate.living_room_thermostat
+              temperature: "{{ cool_setpoint }}"
+      - conditions:
+          - condition: template
+            value_template: >
+              {% set temp = states('sensor.bedroom_temperature_sensor') | float %} 
+              {{ temp >= heat_threshold | float and temp <= cool_threshold | float and (is_state('climate.living_room_thermostat', 'heat') or is_state('climate.living_room_thermostat', 'cool')) }}
+        sequence:
+          - service: climate.set_hvac_mode
+            data:
+              hvac_mode: fan_only
+            target:
+              entity_id: climate.living_room_thermostat
+variables:
+  heat_setpoint: 68
+  cool_setpoint: 62
+  heat_threshold: 66.5
+  cool_threshold: 68.5
+mode: single
